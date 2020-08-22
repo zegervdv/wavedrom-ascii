@@ -166,24 +166,6 @@ class VectorWaveform(Waveform):
         return output
 
 class WavedromASCII:
-    symbol_top = {
-        'rise': "┌────",
-        'fall': "┐    ",
-        'low' : "     ",
-        'high': "─────",
-    }
-    symbol_bot = {
-        'rise': "┘    ",
-        'fall': "└────",
-        'low' : "─────",
-        'high': "     ",
-    }
-
-    signals = {
-        '0': 'low',
-        '1': 'high',
-    }
-
     vector_symbols = {
         'x',
         '2',
@@ -246,3 +228,78 @@ class WavedromASCII:
                 output.append(midline)
             output.append(botline)
         return '\n'.join(output)
+
+
+class BitfieldASCII:
+    def __init__(self):
+        self._fields = []
+
+    @classmethod
+    def from_dict(cls, data):
+        bitfield = cls()
+        for item in data['reg']:
+            bitfield.add_field(item['name'], item['bits'])
+        return bitfield
+
+    @classmethod
+    def from_json(cls, file):
+        with open(file, 'r') as f:
+            data = json5.load(f)
+            return cls.from_dict(data)
+
+    def add_field(self, name, size):
+        self._fields.append((size, name))
+
+    def bitsize(self):
+        return sum(x[0] for x in self._fields)
+
+    def __str__(self):
+        output = []
+        if self.bitsize() < 32:
+            pad = 32 - self.bitsize()
+            fields = [(pad, '')] + list(reversed(self._fields))
+        else:
+            pad = 0
+            fields = reversed(self._fields)
+        bit_numbers = []
+        topline = []
+        midline = []
+        botline = []
+        offset = 0
+        first = True
+        for size, data in fields:
+            bit_numbers.append(f"{32 - offset - 1:>2d}")
+            if first:
+                topline.append('┌')
+                midline.append('│')
+                botline.append('└')
+                first = False
+            else:
+                topline.append('┬')
+                midline.append('│')
+                botline.append('┴')
+            chars = size * 2 - 1
+            if isinstance(data, int):
+                bit = f"{data:0{size}b}"
+                name = " ".join(bit)
+            else:
+                name = f"{data:^{chars}s}"[0:chars]
+            bit_numbers.extend(['  ' * (size - 2)])
+            if size > 1:
+                bit_numbers.append(f"{32 - offset - size:>2d}")
+            topline.append('─')
+            topline.extend(['┬─' * (size - 1)])
+            midline.append(name)
+            botline.append('─')
+            botline.extend(['┴─' * (size - 1)])
+            offset += size
+        topline.append('┐')
+        midline.append('│')
+        botline.append('┘')
+
+        output.append(''.join(bit_numbers))
+        output.append(''.join(topline))
+        output.append(''.join(midline))
+        output.append(''.join(botline))
+        return '\n'.join(output)
+
