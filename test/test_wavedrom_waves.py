@@ -18,6 +18,18 @@ class TestWaves:
             ]
         }
 
+    @pytest.fixture
+    def data_vector(self):
+        return {
+            "signal": [
+                {
+                    "name": 'data',
+                    'wave': 'x2.x...',
+                    'data': 'foobar',
+                }
+            ]
+        }
+
     def test_signals(self, data):
         waves = WavedromASCII.from_dict(data)
         exp = """\
@@ -41,3 +53,13 @@ class TestWaves:
   valid  ──────────┘                   └───────────────────────────────────────\
 """
         assert exp == str(waves)
+
+    def test_vector_wave(self, data_vector):
+        waves = WavedromASCII.from_dict(data_vector)
+        exp = """\
+        ──────────╥───────────────────╥───────────────────────────────────────
+  data  XXXXXXXXXX║ foobar            ║XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+        ──────────╨───────────────────╨───────────────────────────────────────\
+"""
+        assert exp == str(waves)
+
