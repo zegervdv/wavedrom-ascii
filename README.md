@@ -26,6 +26,7 @@ Example Wavedrom JSON:
 ```
 
 Wavedrom image:
+
 <img src="https://svg.wavedrom.com/{signal:[{name:'clk',wave:'p......'},{name:'bus',wave:'x.34.5x',data:'head body tail'},{name:'wire',wave:'0.1..0.'}]}"/>
 
 ASCII representation:
@@ -41,9 +42,11 @@ ASCII representation:
 
 
 The Bitfield example from Wavedrom:
+
 ![reg vl](https://svg.wavedrom.com/github/wavedrom/wavedrom/master/test/reg-vl.json5)
 
 Will be rendered as:
+
 ```
 31  2928  262524      2019      1514  1211       7 6           0
 ┌─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┬─┐
