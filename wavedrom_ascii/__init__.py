@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-from collections import deque
+from collections import deque, defaultdict
+from math import ceil
 import json5
 
 class Waveform:
@@ -231,6 +232,7 @@ class WavedromASCII:
 
 
 class BitfieldASCII:
+    fieldsize = 32
     def __init__(self):
         self._fields = []
 
@@ -253,53 +255,103 @@ class BitfieldASCII:
     def bitsize(self):
         return sum(x[0] for x in self._fields)
 
+    def format_name(self, name):
+        return name
+
     def __str__(self):
+        lines = int(ceil(self.bitsize()/self.fieldsize))
+        msb = lines * self.fieldsize
+
         output = []
-        if self.bitsize() < 32:
-            pad = 32 - self.bitsize()
+        if self.bitsize() < msb:
+            pad = msb - self.bitsize()
             fields = [(pad, '')] + list(reversed(self._fields))
         else:
             pad = 0
             fields = reversed(self._fields)
-        bit_numbers = []
-        topline = []
-        midline = []
-        botline = []
-        offset = 0
-        first = True
-        for size, data in fields:
-            bit_numbers.append(f"{32 - offset - 1:>2d}")
-            if first:
-                topline.append('┌')
-                midline.append('│')
-                botline.append('└')
-                first = False
-            else:
-                topline.append('┬')
-                midline.append('│')
-                botline.append('┴')
-            chars = size * 2 - 1
-            if isinstance(data, int):
-                bit = f"{data:0{size}b}"
-                name = " ".join(bit)
-            else:
-                name = f"{data:^{chars}s}"[0:chars]
-            bit_numbers.extend(['  ' * (size - 2)])
-            if size > 1:
-                bit_numbers.append(f"{32 - offset - size:>2d}")
-            topline.append('─')
-            topline.extend(['┬─' * (size - 1)])
-            midline.append(name)
-            botline.append('─')
-            botline.extend(['┴─' * (size - 1)])
-            offset += size
-        topline.append('┐')
-        midline.append('│')
-        botline.append('┘')
 
-        output.append(''.join(bit_numbers))
-        output.append(''.join(topline))
-        output.append(''.join(midline))
-        output.append(''.join(botline))
-        return '\n'.join(output)
+        field_ranges = []
+        offset = 0
+        for size, data in fields:
+            field_ranges.append((
+                data,
+                msb - offset - 1,
+                msb - offset - size,
+            ))
+            offset += size
+
+        digits = 1
+        if msb > 100:
+            digits = 4
+
+        field_lines = defaultdict(list)
+        index = 0
+        for field in reversed(field_ranges):
+            if field[1] < (index+1) * self.fieldsize:
+                field_lines[index].append(field)
+            elif field[2] < (index+1) * self.fieldsize:
+                field_lines[index].append((field[0],  (index+1) * self.fieldsize - 1, field[2]))
+                index += 1
+                field_lines[index].append((field[0], field[1], index * self.fieldsize))
+            else:
+                index += 1
+                field_lines[index].append(field)
+
+        for i in range(lines):
+            line_out = []
+            bit_numbers = [[] for _ in range(digits)]
+            topline = []
+            midline = []
+            botline = []
+            first = True
+            for data, high, low in reversed(field_lines[i]):
+                size = high - low + 1
+                if digits > 1:
+                    bit = f"{high:>{digits}d}"
+                    for i in range(digits):
+                        bit_numbers[i].append(f" {bit[i]}")
+                else:
+                    bit_numbers[0].append(f"{high:>2d}")
+                if first:
+                    topline.append('┌')
+                    midline.append('│')
+                    botline.append('└')
+                    first = False
+                else:
+                    topline.append('┬')
+                    midline.append('│')
+                    botline.append('┴')
+                chars = size * 2 - 1
+                if isinstance(data, int):
+                    bit = f"{data:0{size}b}"
+                    name = " ".join(bit)
+                else:
+                    name = f"{data:^{chars}s}"[0:chars]
+                for i in range(digits):
+                    bit_numbers[i].extend(['  ' * (size - 2)])
+                if size > 1:
+                    if digits > 1:
+                        bit = f"{low:>{digits}d}"
+                        for i in range(digits):
+                            bit_numbers[i].append(f" {bit[i]}")
+                    else:
+                        bit_numbers[0].append(f"{low:>2d}")
+                topline.append('─')
+                topline.extend(['┬─' * (size - 1)])
+                midline.append(self.format_name(name))
+                botline.append('─')
+                botline.extend(['┴─' * (size - 1)])
+            topline.append('┐')
+            midline.append('│')
+            botline.append('┘')
+
+            for i in range(digits):
+                line_out.append(''.join(bit_numbers[i]))
+            line_out.append(''.join(topline))
+            line_out.append(''.join(midline))
+            line_out.append(''.join(botline))
+
+            output.append('\n'.join(line_out))
+
+        return '\n'.join(reversed(output))
 
